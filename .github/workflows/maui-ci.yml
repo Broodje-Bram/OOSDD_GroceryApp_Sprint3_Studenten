@@ -1,0 +1,100 @@
+name: maui-ci
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  SOLUTION: "**/*.sln"
+
+jobs:
+  build-test-android:
+    name: Android • build & test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: NuGet cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.sln', '**/*.csproj', '**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Install MAUI workloads
+        run: |
+          dotnet workload install maui maui-android
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      - name: Build Android (Release)
+        run: dotnet build ${{ env.SOLUTION }} -c Release -f net8.0-android --no-restore
+
+      - name: Test
+        run: dotnet test ${{ env.SOLUTION }} -c Release --no-build --verbosity normal
+
+      - name: Publish Android APK/AAB
+        run: |
+          mkdir -p artifacts/android
+          find . -path "*/bin/Release/net8.0-android/*" -type f \( -name "*.apk" -o -name "*.aab" \) -exec cp {} artifacts/android/ \;
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-artifacts
+          path: artifacts/android
+
+  build-test-windows:
+    name: Windows • build & test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: NuGet cache
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\NuGet\Cache
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.sln', '**/*.csproj', '**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Install MAUI workloads (Windows)
+        run: |
+          dotnet workload install maui maui-windows
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      - name: Build Windows (Release)
+        run: dotnet build ${{ env.SOLUTION }} -c Release -f net8.0-windows10.0.19041.0 --no-restore
+
+      - name: Test
+        run: dotnet test ${{ env.SOLUTION }} -c Release --no-build --verbosity normal
+
+      - name: Collect Windows build output
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/windows | Out-Null
+          Get-ChildItem -Recurse -Include *.msix,*.msixbundle,*.msi,*.exe | Copy-Item -Destination artifacts/windows -Force
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: artifacts/windows

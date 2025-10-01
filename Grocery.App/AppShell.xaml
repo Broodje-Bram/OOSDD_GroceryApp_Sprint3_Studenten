@@ -7,10 +7,10 @@
     Shell.FlyoutBehavior="Disabled"
     Title="GroceryApp">
 
-    <TabBar>
-        <Tab Title="Home" Icon="grocerylist.png">
-            <ShellContent Title="Boodschappenlijsten" ContentTemplate="{DataTemplate local:GroceryListsView}" />
-        </Tab>
+	<TabBar>
+		<Tab Title="Home" Icon="grocerylist.png">
+			<ShellContent Title="Boodschappenlijsten" ContentTemplate="{DataTemplate local:GroceryListsView}" />
+		</Tab>
         <Tab Title="Producten" Icon="products.png">
             <ShellContent Title="Producten" ContentTemplate="{DataTemplate local:ProductView}" />
         </Tab>
